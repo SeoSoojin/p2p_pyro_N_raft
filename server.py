@@ -1,9 +1,7 @@
-from pkg.daemon import DAEMON
 from pkg.peer import Peer
 import threading 
 
 if __name__ == '__main__':
-    DAEMON.start_on_thread()
 
     port_list = [50001, 50002, 50003, 50004, 50005]
     peer_list = []
