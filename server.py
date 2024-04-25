@@ -1,9 +1,9 @@
 from pkg.peer import Peer
-import threading 
+import threading
 
 if __name__ == '__main__':
 
-    port_list = [50001, 50002, 50003, 50004, 50005]
+    port_list = [50001, 50002, 50003, 50004]
     peer_list = []
 
     for port in port_list:
@@ -11,15 +11,10 @@ if __name__ == '__main__':
         peer = Peer(name=name, port=port, peer_list=port_list)
         peer_list.append(peer)
 
-
     for peer in peer_list:
-        try:
-            thread = threading.Thread(target=peer.run)
-            thread.daemon = True
-            thread.start()
-            
-        except Exception as e:
-            print(e)
+        th = threading.Thread(target=peer.main_loop)
+        th.daemon = True
+        th.start()
 
     while True:
         pass
