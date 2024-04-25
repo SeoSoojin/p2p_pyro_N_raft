@@ -74,10 +74,10 @@ class Peer():
                 votes += 1
         self.timeout = self.calc_timeout()
         if votes > (len(self.peer_list) + 1 ) / 2:
-            self.state = State.LEADER
-            self.heartbeat()
+            self.become_leader()
         else:
             self.state = State.FOLLOWER
+
         for peer in self.peer_list:
             uri = f'PYRO:peer@localhost:{peer}'
             peer = Pyro5.api.Proxy(uri)
@@ -91,6 +91,11 @@ class Peer():
     def next_term(self):
         self.state = State.FOLLOWER
         self.has_voted = False
+
+    def become_leader(self):
+        self.state = State.LEADER
+        self.ns.register(f'leader', self.uri)
+        self.heartbeat()
 
     def __del__(self):
         self.daemon.shutdown()
