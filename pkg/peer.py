@@ -10,7 +10,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.
 
 from .state import State
 
-election_lock = False
+election_lock = False 
+# This is a global variable that will be used to lock the election process, should be an redis if peers would be in different machines
 @Pyro5.api.expose
 class Peer():
     def __init__(self, name:str, port:int, peer_list:list):
