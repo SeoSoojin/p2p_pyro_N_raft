@@ -20,7 +20,6 @@ class Peer():
         self.peer_list = [peer for peer in peer_list if peer != self.port]
         self.daemon = Pyro5.api.Daemon(port=self.port)
         self.uri = self.daemon.register(self, objectId="peer")
-        self.ns = Pyro5.api.locate_ns()
         self.state = State.FOLLOWER
         self.has_voted = False
         self.timeout = 0
@@ -36,7 +35,6 @@ class Peer():
         global election_lock
     
         while True:
-            print(f'{self.name} - {self.state} - {self.timeout}')
             if self.state == State.FOLLOWER and time.time() > self.timeout and not self.check_election():
                 election_lock = True
                 self.election()
@@ -94,8 +92,12 @@ class Peer():
 
     def become_leader(self):
         self.state = State.LEADER
-        self.ns.register(f'leader', self.uri)
+        ns = Pyro5.api.locate_ns()
+        ns.register(f'leader', self.uri)
         self.heartbeat()
 
+    def receive_client_request(self, request:str):
+        print(f'{self.name} - {request}')
+    
     def __del__(self):
         self.daemon.shutdown()
