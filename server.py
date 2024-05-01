@@ -1,7 +1,6 @@
 from pkg.peer import Peer
 import threading
 import json
-import redis
 import signal
 
 class Server():
