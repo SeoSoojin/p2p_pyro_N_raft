@@ -1,35 +1,18 @@
-from Crypto.PublicKey import RSA
-from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
-from Crypto.Hash import SHA256
-import binascii
+import Pyro5.api
+import json
 
-# Generate 1024-bit RSA key pair (private + public key)
-keyPair = RSA.generate(bits=1024)
-pubKey = keyPair.publickey()
+if __name__ == '__main__':
+    ns = Pyro5.api.locate_ns()
 
-# Sign the message using the PKCS#1 v1.5 signature scheme (RSASP1)
-msg = b'Message for RSA signing'
-hash = SHA256.new(msg)
-signer = PKCS115_SigScheme(keyPair)
-signature = signer.sign(hash)
-print("Signature:", binascii.hexlify(signature))
+    uri = ns.lookup('leader')
 
-# Verify valid PKCS#1 v1.5 signature (RSAVP1)
-msg = b'Message for RSA signing'
-hash = SHA256.new(msg)
-verifier = PKCS115_SigScheme(pubKey)
-try:
-    verifier.verify(hash, signature)
-    print("Signature is valid.")
-except:
-    print("Signature is invalid.")
+    leader = Pyro5.api.Proxy(uri)
 
-# Verify invalid PKCS#1 v1.5 signature (RSAVP1)
-msg = b'A tampered message'
-hash = SHA256.new(msg)
-verifier = PKCS115_SigScheme(pubKey)
-try:
-    verifier.verify(hash, signature)
-    print("Signature is valid.")
-except:
-    print("Signature is invalid.")
+    json_data = {
+        'msg': 'Hello World!'
+    }
+
+    leader.client_request(json.dumps(json_data))
+    attr = leader.get_attr('msg')
+    print(attr)
+
