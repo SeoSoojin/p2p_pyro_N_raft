@@ -190,7 +190,7 @@ class Peer():
 
     def get_attr(self, attribute:str):
         """Gets the attribute that was changed after the request."""
-        print(f'{self.name}.{attribute}: {self.state_machine.get_attribute(attribute)}')
+        #print(f'{self.name}.{attribute}: {self.state_machine.get_attribute(attribute)}')
 
         if self.state == State.LEADER:
             self.broadcast(lambda peer: peer.get_attr(attribute))
