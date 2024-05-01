@@ -9,10 +9,10 @@ if __name__ == '__main__':
     leader = Pyro5.api.Proxy(uri)
 
     json_data = {
-        'msg': 'Hello World!'
+        'name': 'John Doe'
     }
 
     leader.client_request(json.dumps(json_data))
-    attr = leader.get_attr('msg')
+    attr = leader.get_attr('name')
     print(attr)
 
