@@ -1,9 +1,16 @@
 from pkg.peer import Peer
 import threading
+import json
 
 if __name__ == '__main__':
 
-    port_list = [50001, 50002, 50003, 50004]
+    
+    port_list = []
+
+    with open('./data/peers.json', 'r') as f:
+        config = json.load(f)
+        port_list = config['ports']
+
     peer_list = []
 
     for port in port_list:

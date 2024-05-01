@@ -4,7 +4,11 @@ import sys
 import os
 import threading
 import time
-from datetime import datetime
+from base64 import b64encode, b64decode
+import binascii
+from Crypto.Hash import SHA256
+from Crypto.PublicKey import RSA
+from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 
@@ -15,14 +19,20 @@ election_lock = False
 @Pyro5.api.expose
 class Peer():
     def __init__(self, name:str, port:int, peer_list:list):
+
         self.name = name
         self.port = port
         self.peer_list = [peer for peer in peer_list if peer != self.port]
+
         self.daemon = Pyro5.api.Daemon(port=self.port)
         self.uri = self.daemon.register(self, objectId="peer")
+
         self.state = State.FOLLOWER
         self.has_voted = False
         self.timeout = 0
+
+        self.keyPair = RSA.generate(bits=1024)
+        self.signer = PKCS115_SigScheme(self.keyPair)
 
         th = threading.Thread(target=self.daemon.requestLoop)
         th.daemon = True
@@ -51,15 +61,24 @@ class Peer():
         return rd.uniform(0.15, 0.3) + now
 
     def heartbeat(self):
+        message = b'heartbeat'
+        digest = SHA256.new(message)
+        signature = self.signer.sign(digest)
         for peer in self.peer_list:
             uri = f'PYRO:peer@localhost:{peer}'
             peer = Pyro5.api.Proxy(uri)
-            peer.receive_heartbeat()
+            peer.receive_heartbeat(message, signature)
             self.timeout = self.calc_timeout()
 
-    def receive_heartbeat(self):
-        self.timeout = self.calc_timeout()
-
+    def receive_heartbeat(self, message:bytes, signature:bytes):
+        try:
+            message = SHA256.new(b64decode(message['data']))
+            signature = b64decode(signature['data'])
+            self.verifier.verify(message, signature)
+            self.timeout = self.calc_timeout()
+        except ValueError as e:
+            print(f'Error: {e}')
+            
     def election(self):
         self.state = State.CANDIDATE
         votes = 1
@@ -76,17 +95,16 @@ class Peer():
         else:
             self.state = State.FOLLOWER
 
-        for peer in self.peer_list:
-            uri = f'PYRO:peer@localhost:{peer}'
-            peer = Pyro5.api.Proxy(uri)
-            peer.next_term()
         self.has_voted = False
 
     def request_vote(self) -> bool:
         self.has_voted = True
         return True
 
-    def next_term(self):
+    def next_term(self, key:bytes):
+        
+        key = b64decode(key['data'])
+        self.verifier = PKCS115_SigScheme(RSA.import_key(key))
         self.state = State.FOLLOWER
         self.has_voted = False
 
@@ -94,6 +112,13 @@ class Peer():
         self.state = State.LEADER
         ns = Pyro5.api.locate_ns()
         ns.register(f'leader', self.uri)
+
+        public_key = self.keyPair.publickey().export_key()
+        for peer in self.peer_list:
+            uri = f'PYRO:peer@localhost:{peer}'
+            peer = Pyro5.api.Proxy(uri)
+            peer.next_term(public_key)
+
         self.heartbeat()
 
     def receive_client_request(self, request:str):
